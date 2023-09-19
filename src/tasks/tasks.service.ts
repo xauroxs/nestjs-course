@@ -50,4 +50,18 @@ export class TasksService {
 
     return task;
   }
+
+  updateStatus(id: string, status: TASK_STATUSES): Task {
+    const taskIndex = this.tasks.findIndex((task) => task.id === id);
+
+    if (taskIndex === -1) {
+      throw new NotFoundException(`There is no task with id ${id}`);
+    }
+
+    this.tasks[taskIndex].status = status;
+
+    const task = this.tasks[taskIndex];
+
+    return task;
+  }
 }
