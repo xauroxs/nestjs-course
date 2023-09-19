@@ -7,11 +7,11 @@ export class TasksService {
   private tasks: Task[] = [];
   private id: number = 0;
 
-  getAllTasks() {
+  getAllTasks(): Task[] {
     return this.tasks;
   }
 
-  createTask(title: string, description: string) {
+  createTask(title: string, description: string): Task {
     const newTask: Task = {
       id: `${this.id++}`,
       title,
