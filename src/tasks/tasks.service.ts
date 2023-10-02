@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -12,6 +17,8 @@ import { FilterTasksDto } from './dto/filter-tasks.dto';
 
 @Injectable()
 export class TasksService {
+  private logger = new Logger();
+
   constructor(
     @InjectRepository(Task)
     private tasksRepository: Repository<Task>,
@@ -35,41 +42,80 @@ export class TasksService {
       );
     }
 
-    const tasks = await query.getMany();
+    try {
+      const tasks = await query.getMany();
 
-    return tasks;
+      return tasks;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get tasks for user "${
+          user.username
+        }". Filters: ${JSON.stringify(dto)}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException();
+    }
   }
 
   async getTaskById(id: string, user: User): Promise<Task> {
-    const task = await this.tasksRepository.findOneBy({ id, user });
+    try {
+      const task = await this.tasksRepository.findOneBy({ id, user });
 
-    if (!task) {
-      throw new NotFoundException(`Task with ID "${id}" not found.`);
+      if (!task) {
+        throw new NotFoundException(`Task with ID "${id}" not found.`);
+      }
+
+      return task;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get task with ID "${id}" for user "${user.username}"`,
+        error.stack,
+      );
+
+      throw new InternalServerErrorException();
     }
-
-    return task;
   }
 
   async createTask(dto: CreateTaskDto, user: User): Promise<Task> {
     const { title, description } = dto;
 
-    const task = this.tasksRepository.create({
-      title,
-      description,
-      status: TaskStatus.OPEN,
-      user,
-    });
+    try {
+      const task = this.tasksRepository.create({
+        title,
+        description,
+        status: TaskStatus.OPEN,
+        user,
+      });
 
-    await this.tasksRepository.save(task);
+      await this.tasksRepository.save(task);
 
-    return task;
+      return task;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create a task for user "${
+          user.username
+        }" with data "${JSON.stringify(dto)}"`,
+        error.stack,
+      );
+
+      throw new InternalServerErrorException();
+    }
   }
 
   async deleteTask(id: string, user: User): Promise<void> {
-    const result = await this.tasksRepository.delete({ id, user });
+    try {
+      const result = await this.tasksRepository.delete({ id, user });
 
-    if (result.affected === 0) {
-      throw new NotFoundException(`Task with ID "${id}" not found.`);
+      if (result.affected === 0) {
+        throw new NotFoundException(`Task with ID "${id}" not found.`);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete a task with ID "${id}" for user "${user.username}"`,
+        error.stack,
+      );
+
+      throw new InternalServerErrorException();
     }
   }
 
@@ -82,8 +128,17 @@ export class TasksService {
 
     task.status = status;
 
-    await this.tasksRepository.save(task);
+    try {
+      await this.tasksRepository.save(task);
 
-    return task;
+      return task;
+    } catch (error) {
+      this.logger.error(
+        `Failed to update status of a task with ID "${id}" to "${status}" for user "${user.username}"`,
+        error.stack,
+      );
+
+      throw new InternalServerErrorException();
+    }
   }
 }
