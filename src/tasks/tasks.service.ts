@@ -3,12 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Task } from './task.entity';
+import { User } from 'src/auth/user.entity';
 
 import { TaskStatus } from './task-status.enum';
 
 import { CreateTaskDto } from './dto/create-task.dto';
 import { FilterTasksDto } from './dto/filter-tasks.dto';
-import { User } from 'src/auth/user.entity';
 
 @Injectable()
 export class TasksService {
@@ -17,10 +17,12 @@ export class TasksService {
     private tasksRepository: Repository<Task>,
   ) {}
 
-  async getTasks(dto: FilterTasksDto): Promise<Task[]> {
+  async getTasks(dto: FilterTasksDto, user: User): Promise<Task[]> {
     const { status, search } = dto;
 
     const query = this.tasksRepository.createQueryBuilder('task');
+
+    query.where({ user });
 
     if (status) {
       query.andWhere('task.status = :status', { status });
@@ -38,8 +40,8 @@ export class TasksService {
     return tasks;
   }
 
-  async getTaskById(id: string): Promise<Task> {
-    const task = await this.tasksRepository.findOneBy({ id });
+  async getTaskById(id: string, user: User): Promise<Task> {
+    const task = await this.tasksRepository.findOneBy({ id, user });
 
     if (!task) {
       throw new NotFoundException(`Task with ID "${id}" not found.`);
@@ -63,16 +65,20 @@ export class TasksService {
     return task;
   }
 
-  async deleteTask(id: string): Promise<void> {
-    const result = await this.tasksRepository.delete(id);
+  async deleteTask(id: string, user: User): Promise<void> {
+    const result = await this.tasksRepository.delete({ id, user });
 
     if (result.affected === 0) {
       throw new NotFoundException(`Task with ID "${id}" not found.`);
     }
   }
 
-  async updateStatus(id: string, status: TaskStatus): Promise<Task> {
-    const task = await this.getTaskById(id);
+  async updateStatus(
+    id: string,
+    status: TaskStatus,
+    user: User,
+  ): Promise<Task> {
+    const task = await this.getTaskById(id, user);
 
     task.status = status;
 
