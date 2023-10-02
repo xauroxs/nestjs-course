@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +18,8 @@ import { JwtPayload } from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
+  private logger = new Logger();
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
@@ -37,10 +40,12 @@ export class AuthService {
 
     try {
       await this.usersRepository.save(user);
-    } catch (err) {
-      if (err.code === '23505') {
+    } catch (error) {
+      if (error.code === '23505') {
         throw new ConflictException('Username is already taken');
       } else {
+        this.logger.error('Error creating a user', error.stack);
+
         throw new InternalServerErrorException();
       }
     }
